@@ -1,0 +1,205 @@
+#ifndef  __MPI_VPSS_H__
+#define  __MPI_VPSS_H__
+
+#ifdef __cplusplus
+#if __cplusplus
+extern "C"{
+#endif
+#endif /* End of #ifdef __cplusplus */
+
+#include "hi_math.h"
+#include "hi_common.h"
+#include "hi_comm_vpss.h"
+#include "mkp_ioctl.h"
+
+
+#define VPSS_MAKE_IOCFD(grp,chn)    ((((grp) & 0xff) << 16) | ((chn) & 0xff))
+#define VPSS_GETGRP_BY_IOCFD(f)    (((f) >> 16) & 0xff)
+#define VPSS_GETCHN_BY_IOCFD(f)     ((f) & 0xff)
+
+#define VPSS_TRACE(level, fmt...)\
+                do{ \
+                        HI_TRACE(level, HI_ID_VPSS,"[Func]:%s [Line]:%d [Info]:", __FUNCTION__, __LINE__);\
+                        HI_TRACE(level,HI_ID_VPSS,##fmt);\
+                }while(0)
+        
+typedef struct
+{
+     HI_BOOL bPreScaleCapa;       /*是否有预缩放能力*/
+     HI_BOOL bCapSelCapa;         /*是否有抽场能力*/
+     HI_BOOL bSpCapa;             /*是否可设置SP*/
+     HI_BOOL bChnNrCapa;          /*通道是否可设置NR*/
+     HI_BOOL bTransCapa;          /*是否具有帧场转换功能*/  
+     HI_BOOL bSelfPreScaleCapa;   /*vpss自身是否有缩放能力*/
+     HI_BOOL bDieST;              /*DIE模块是否能单独计算ST*/
+     HI_U32  u32VpssNum;          /*VPSS个数*/
+}VPSS_CHIP_CAPABILITY_S;
+                
+typedef struct HI_VPSS_ZOOM_FACTOR_S
+{
+    HI_S32 HZoomOutFactor;
+    HI_S32 VZoomOutFactor;
+    HI_U32 HZoomInFactor;
+    HI_U32 VZoomInFactor;
+}VPSS_ZOOM_FACTOR_S;
+
+typedef enum hiVPSS_PRESCALE_E
+{
+	VPSS_PRESCALE_NULL = 0,
+	VPSS_PRESCALE_TDE,
+    VPSS_PRESCALE_VPSS,                     
+} VPSS_PRESCALE_E;
+
+/*-------------------------------------------------------------------------*/
+
+typedef enum hiIOC_NR_VPSS_E
+{   
+    IOC_NR_VPSS_GRP_ATTR_SET = 0,
+    IOC_NR_VPSS_GRP_ATTR_GET,
+    
+    IOC_NR_VPSS_GRP_START,
+    IOC_NR_VPSS_GRP_STOP,
+
+    IOC_NR_VPSS_GRP_RESET,
+
+    IOC_NR_VPSS_CHN_ATTR_SET,
+    IOC_NR_VPSS_CHN_ATTR_GET,
+
+    IOC_NR_VPSS_CHN_ENABLE,
+    IOC_NR_VPSS_CHN_DISABLE,
+
+    IOC_NR_VPSS_GRP_CREATE,
+    IOC_NR_VPSS_GRP_DESTROY,
+
+    IOC_NR_VPSS_CROP_CFG_SET,
+    IOC_NR_VPSS_CROP_CFG_GET,
+
+    IOC_NR_VPSS_SET_PARAM,
+    IOC_NR_VPSS_GET_PARAM,
+
+    IOC_NR_VPSS_SET_MODE,
+    IOC_NR_VPSS_GET_MODE,   
+    
+    IOC_NR_VPSS_SET_DEPTH,
+    IOC_NR_VPSS_GET_DEPTH,
+
+    IOC_NR_VPSS_USER_SENDFRAME,
+    IOC_NR_VPSS_USER_SENDFRAME_TIMEOUT,
+    
+    IOC_NR_VPSS_USER_GETFRAME,
+    IOC_NR_VPSS_USER_RELEASEFRAME,
+
+    IOC_NR_VPSS_USER_GETGROUPFRAME,
+    IOC_NR_VPSS_USER_RELEASEGROUPFRAME,
+
+    /*********************21新增*************************/
+    IOC_NR_VPSS_CHN_SET_NR_PARAM,
+    IOC_NR_VPSS_CHN_GET_NR_PARAM,
+    
+    IOC_NR_VPSS_CHN_SET_SP_PARAM,
+    IOC_NR_VPSS_CHN_GET_SP_PARAM,
+    
+    IOC_NR_VPSS_CHN_SET_PRESCALE,
+    IOC_NR_VPSS_CHN_GET_PRESCALE,
+
+    IOC_NR_VPSS_CHN_SET_CHNFIELD,
+    IOC_NR_VPSS_CHN_GET_CHNFIELD,
+    
+    IOC_NR_VPSS_GRP_SET_FILTER,
+    IOC_NR_VPSS_GRP_GET_FILTER,
+    
+    IOC_NR_VPSS_GRP_SET_FRAMERATE,
+    IOC_NR_VPSS_GRP_GET_FRAMERATE,
+
+    /*********************18 新增*************************/
+    IOC_NR_VPSS_SET_EXTCHN_ATTR,
+    IOC_NR_VPSS_GET_EXTCHN_ATTR,
+
+    IOC_NR_VPSS_SET_IMG_QUALITY,
+    IOC_NR_VPSS_GET_IMG_QUALITY,
+
+    IOC_NR_VPSS_GRP_SET_DELAY,
+    IOC_NR_VPSS_GRP_GET_DELAY,
+
+    IOC_NR_VPSS_BIND_FLAG2FD,
+} IOC_NR_VPSS_E;
+
+#define VPSS_GRP_ATTR_SET_CTRL      _IOW(IOC_TYPE_VPSS, IOC_NR_VPSS_GRP_ATTR_SET, VPSS_GRP_ATTR_S)
+#define VPSS_GRP_ATTR_GET_CTRL      _IOR(IOC_TYPE_VPSS, IOC_NR_VPSS_GRP_ATTR_GET, VPSS_GRP_ATTR_S)
+
+#define VPSS_GRP_START_CTRL         _IO(IOC_TYPE_VPSS, IOC_NR_VPSS_GRP_START)
+#define VPSS_GRP_STOP_CTRL          _IO(IOC_TYPE_VPSS,  IOC_NR_VPSS_GRP_STOP)
+
+#define VPSS_GRP_RESET_CTRL         _IO(IOC_TYPE_VPSS,  IOC_NR_VPSS_GRP_RESET)
+
+#define VPSS_CHN_ATTR_SET_CTRL      _IOW(IOC_TYPE_VPSS, IOC_NR_VPSS_CHN_ATTR_SET, VPSS_CHN_ATTR_S)
+#define VPSS_CHN_ATTR_GET_CTRL      _IOR(IOC_TYPE_VPSS, IOC_NR_VPSS_CHN_ATTR_GET, VPSS_CHN_ATTR_S)
+
+#define VPSS_CHN_ENABLE_CTRL        _IO(IOC_TYPE_VPSS, IOC_NR_VPSS_CHN_ENABLE)
+#define VPSS_CHN_DISABLE_CTRL       _IO(IOC_TYPE_VPSS, IOC_NR_VPSS_CHN_DISABLE)
+
+#define VPSS_GRP_CREATE_CTRL        _IOW(IOC_TYPE_VPSS, IOC_NR_VPSS_GRP_CREATE,VPSS_GRP_ATTR_S)
+#define VPSS_GRP_DESTROY_CTRL       _IO(IOC_TYPE_VPSS, IOC_NR_VPSS_GRP_DESTROY)
+
+#define VPSS_CROP_CFG_SET_CTRL      _IOW(IOC_TYPE_VPSS, IOC_NR_VPSS_CROP_CFG_SET,VPSS_CROP_INFO_S)
+#define VPSS_CROP_CFG_GET_CTRL      _IOR(IOC_TYPE_VPSS, IOC_NR_VPSS_CROP_CFG_GET,VPSS_CROP_INFO_S)
+
+#define VPSS_SET_PARAM              _IOW(IOC_TYPE_VPSS, IOC_NR_VPSS_SET_PARAM, VPSS_GRP_PARAM_S)
+#define VPSS_GET_PARAM              _IOR(IOC_TYPE_VPSS, IOC_NR_VPSS_GET_PARAM, VPSS_GRP_PARAM_S)
+
+#define VPSS_SET_MODE               _IOW(IOC_TYPE_VPSS, IOC_NR_VPSS_SET_MODE, VPSS_CHN_MODE_S)
+#define VPSS_GET_MODE               _IOR(IOC_TYPE_VPSS, IOC_NR_VPSS_GET_MODE, VPSS_CHN_MODE_S)
+
+#define VPSS_SET_DEPTH              _IOW(IOC_TYPE_VPSS, IOC_NR_VPSS_SET_DEPTH, HI_U32)
+#define VPSS_GET_DEPTH              _IOR(IOC_TYPE_VPSS, IOC_NR_VPSS_GET_DEPTH, HI_U32)
+
+#define VPSS_USER_SENDFRAME         _IOW(IOC_TYPE_VPSS, IOC_NR_VPSS_USER_SENDFRAME, VIDEO_FRAME_INFO_S)
+#define VPSS_USER_SENDFRAME_TIMEOUT _IOW(IOC_TYPE_VPSS, IOC_NR_VPSS_USER_SENDFRAME_TIMEOUT, VPSS_FRAME_TIMEOUT_S)
+
+#define VPSS_USER_GETFRAME          _IOWR(IOC_TYPE_VPSS, IOC_NR_VPSS_USER_GETFRAME, VIDEO_FRAME_INFO_S)
+#define VPSS_USER_RELEASEFRAME      _IOW(IOC_TYPE_VPSS, IOC_NR_VPSS_USER_RELEASEFRAME, VIDEO_FRAME_INFO_S)
+
+#define VPSS_USER_GETGROUPFRAME      _IOWR(IOC_TYPE_VPSS, IOC_NR_VPSS_USER_GETGROUPFRAME, VPSS_GET_GRP_FRAME_S)
+#define VPSS_USER_RELEASEGROUPFRAME  _IOW(IOC_TYPE_VPSS, IOC_NR_VPSS_USER_RELEASEGROUPFRAME, VIDEO_FRAME_INFO_S)
+/*******************************************************21新增*****************************************************************/
+
+#define VPSS_SET_NRPARAM            _IOW(IOC_TYPE_VPSS, IOC_NR_VPSS_CHN_SET_NR_PARAM, VPSS_CHN_NR_PARAM_S)
+#define VPSS_GET_NRPARAM            _IOR(IOC_TYPE_VPSS, IOC_NR_VPSS_CHN_GET_NR_PARAM, VPSS_CHN_NR_PARAM_S)
+
+#define VPSS_SET_SPPARAM            _IOW(IOC_TYPE_VPSS, IOC_NR_VPSS_CHN_SET_SP_PARAM, VPSS_CHN_SP_PARAM_S)
+#define VPSS_GET_SPPARAM            _IOR(IOC_TYPE_VPSS, IOC_NR_VPSS_CHN_GET_SP_PARAM, VPSS_CHN_SP_PARAM_S)
+
+#define VPSS_SET_PRESCALE           _IOW(IOC_TYPE_VPSS, IOC_NR_VPSS_CHN_SET_PRESCALE, VPSS_PRESCALE_INFO_S)
+#define VPSS_GET_PRESCALE           _IOR(IOC_TYPE_VPSS, IOC_NR_VPSS_CHN_GET_PRESCALE, VPSS_PRESCALE_INFO_S)
+
+#define VPSS_SET_CHNFIELD           _IOW(IOC_TYPE_VPSS, IOC_NR_VPSS_CHN_SET_CHNFIELD, VPSS_CAPSEL_E)
+#define VPSS_GET_CHNFIELD           _IOR(IOC_TYPE_VPSS, IOC_NR_VPSS_CHN_GET_CHNFIELD, VPSS_CAPSEL_E)
+
+#define VPSS_SET_FILTER             _IOW(IOC_TYPE_VPSS, IOC_NR_VPSS_GRP_SET_FILTER, VPSS_SIZER_INFO_S)
+#define VPSS_GET_FILTER             _IOR(IOC_TYPE_VPSS, IOC_NR_VPSS_GRP_GET_FILTER, VPSS_SIZER_INFO_S)
+
+#define VPSS_SET_FRAMERATE          _IOW(IOC_TYPE_VPSS, IOC_NR_VPSS_GRP_SET_FRAMERATE, VPSS_FRAME_RATE_S)
+#define VPSS_GET_FRAMERATE          _IOR(IOC_TYPE_VPSS, IOC_NR_VPSS_GRP_GET_FRAMERATE, VPSS_FRAME_RATE_S)
+
+/*******************************************************18新增*****************************************************************/
+
+#define VPSS_SET_EXTCHN_ATTR        _IOW(IOC_TYPE_VPSS, IOC_NR_VPSS_SET_EXTCHN_ATTR, VPSS_EXT_CHN_ATTR_S)       
+#define VPSS_GET_EXTCHN_ATTR        _IOR(IOC_TYPE_VPSS, IOC_NR_VPSS_GET_EXTCHN_ATTR, VPSS_EXT_CHN_ATTR_S)   
+
+#define VPSS_SET_IMG_QUALITY        _IOW(IOC_TYPE_VPSS, IOC_NR_VPSS_SET_IMG_QUALITY, VPSS_IMG_QUALITY_CFG_S)    
+#define VPSS_GET_IMG_QUALITY        _IOR(IOC_TYPE_VPSS, IOC_NR_VPSS_GET_IMG_QUALITY, VPSS_IMG_QUALITY_CFG_S)
+
+#define VPSS_SET_DELAY              _IOW(IOC_TYPE_VPSS, IOC_NR_VPSS_GRP_SET_DELAY, HI_U32)
+#define VPSS_GET_DELAY              _IOR(IOC_TYPE_VPSS, IOC_NR_VPSS_GRP_GET_DELAY, HI_U32)
+
+#define VPSS_BIND_FLAG2FD           _IOW(IOC_TYPE_VPSS, IOC_NR_VPSS_BIND_FLAG2FD, HI_U32)
+
+
+#ifdef __cplusplus
+#if __cplusplus
+}
+#endif
+#endif /* End of #ifdef __cplusplus */
+
+#endif/* End of #ifndef __MPI_PRIV_VPSS_H__*/
+

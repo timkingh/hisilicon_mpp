@@ -1,0 +1,1 @@
+cmd_/home/pub/platform_h3/mpp/extdrv/hi3531/i2c/i2c.ko := arm-hisiv200-linux-ld -EL -r  -T /home/pub/osdrv/hi3531V100_OSDRV_V2.0.A.0_20130604-171234/kernel/linux-3.0.y/scripts/module-common.lds --build-id  -o /home/pub/platform_h3/mpp/extdrv/hi3531/i2c/i2c.ko /home/pub/platform_h3/mpp/extdrv/hi3531/i2c/i2c.o /home/pub/platform_h3/mpp/extdrv/hi3531/i2c/i2c.mod.o

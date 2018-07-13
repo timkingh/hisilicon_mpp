@@ -1,0 +1,1 @@
+cmd_/home/pub/platform_h3/mpp/extdrv/hi3531/gpio_i2c_8b/gpioi2c.o := arm-hisiv200-linux-ld -EL    -r -o /home/pub/platform_h3/mpp/extdrv/hi3531/gpio_i2c_8b/gpioi2c.o /home/pub/platform_h3/mpp/extdrv/hi3531/gpio_i2c_8b/gpio_i2c.o 
