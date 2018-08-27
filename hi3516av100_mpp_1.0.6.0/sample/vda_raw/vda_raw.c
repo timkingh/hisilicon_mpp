@@ -4,7 +4,8 @@
 
 #include "sample_comm.h"
 
-#define MAX_VB_BLOCK_NUM  (5)
+#define MAX_VB_BLOCK_NUM        (5)
+#define MAX_FILE_NAME_LENGTH    (256)
 
 typedef struct {
     VB_BLK  vb_blk;
@@ -21,6 +22,97 @@ typedef struct rkVDA_MD_PARAM_S {
 
 static pthread_t g_VdaPid[2];
 static RK_VDA_MD_PARAM_S g_stMdParam;
+
+typedef struct {
+    char        file_input[MAX_FILE_NAME_LENGTH];
+    char        file_output[MAX_FILE_NAME_LENGTH];
+    HI_U32      width;
+    HI_U32      height;
+    HI_U32      vframes;  // cnt of frames
+    HI_U32      sad_thresh;
+} VdaTestCmd;
+
+static int parse_vda_cmd(int argc, char **argv, VdaTestCmd *cmd)
+{
+    HI_U32 optindex = 1;
+    const char *opt;
+    const char *next;
+
+    while (optindex < argc) {
+        opt  = (const char *)argv[optindex++];
+        next = (const char *)argv[optindex];
+
+        if (opt[0] == '-' && opt[1] != '\0') {
+            opt++;
+            switch (*opt) {
+            case 'i' :
+                if (next) {
+                    strncpy(cmd->file_input, next, MAX_FILE_NAME_LENGTH);
+                    cmd->file_input[strlen(next)] = '\0';
+                } else {
+                    SAMPLE_PRT("failed to get input param\n");
+                    return -1;
+                }
+                break;
+            case 'o' :
+                if (next) {
+                    strncpy(cmd->file_output, next, MAX_FILE_NAME_LENGTH);
+                    cmd->file_output[strlen(next)] = '\0';
+                } else {
+                    SAMPLE_PRT("failed to get output param\n");
+                    return -1;
+                }
+                break;
+            case 's' :
+                if (next) {
+                    cmd->sad_thresh = atoi(next);
+                } else {
+                    SAMPLE_PRT("failed to get sad threshold param\n");
+                    return -1;
+                }
+                break;
+            case 'w' :
+                if (next) {
+                    cmd->width = atoi(next);
+                } else {
+                    SAMPLE_PRT("failed to get width param\n");
+                    return -1;
+                }
+                break;
+            case 'h' :
+                if (next) {
+                    cmd->height = atoi(next);
+                } else {
+                    SAMPLE_PRT("failed to get height param\n");
+                    return -1;
+                }
+                break;
+            case 'n' :
+                if (next) {
+                    cmd->vframes = atoi(next);
+                } else {
+                    SAMPLE_PRT("failed to get vframes param\n");
+                    return -1;
+                }
+            default :
+                break;
+            }
+        }
+        optindex++;
+    }
+
+    SAMPLE_PRT("command : -i %s \n"
+               " -o %s \n"
+               " -s %d \n"
+               " -w %d \n"
+               " -h %d \n"
+               " -n %d \n",
+               cmd->file_input,
+               cmd->file_output, cmd->sad_thresh,
+               cmd->width,
+               cmd->height, cmd->vframes);
+    return 0;
+}
 
 /******************************************************************************
 * funciton : vda MD mode print -- Md OBJ
@@ -239,29 +331,31 @@ static HI_S32 rk_yuv420spto420(HI_U8 *src, HI_U8 *dst, HI_U32 width, HI_U32 heig
 
 int main(int argc, char **argv)
 {
-    if (argc < 6) {
-        SAMPLE_PRT("Usage: ./vda_raw in.yuv width height out.md frame_num\n");
+    if (argc < 13) {
+        SAMPLE_PRT("Usage: ./vda_raw -i in.yuv -o out.md -w width -h height -n frames -s sad\n");
         return -1;
     }
 
     HI_S32 ret;
-    HI_U32 width = atoi(argv[2]);
-    HI_U32 height = atoi(argv[3]);
+    VdaTestCmd cmd;
+    ret = parse_vda_cmd(argc, argv, &cmd);
+
+    HI_U32 width = cmd.width;
+    HI_U32 height = cmd.height;
     HI_U32 size = width * height * 3 / 2;
-    HI_U32 frames = atoi(argv[5]);
-    SAMPLE_PRT("file %s width %d height %d frames %d\n", argv[1], width, height, frames);
+    HI_U32 frames = cmd.vframes;
 
     FILE *fp_yuv = NULL;
-    fp_yuv = fopen(argv[1], "r");
+    fp_yuv = fopen(cmd.file_input, "r");
     if (fp_yuv == NULL) {
-        SAMPLE_PRT("failed to open file %s.\n", argv[1]);
+        SAMPLE_PRT("failed to open file %s.\n", cmd.file_input);
         return -1;
     }
 
     FILE *fp_md = NULL;
-    fp_md = fopen(argv[4], "w");
+    fp_md = fopen(cmd.file_output, "w");
     if (fp_md == NULL) {
-        SAMPLE_PRT("failed to open file %s.\n", argv[4]);
+        SAMPLE_PRT("failed to open file %s.\n", cmd.file_output);
         return -1;
     }
 
@@ -311,7 +405,7 @@ int main(int argc, char **argv)
     chn_s.unAttr.stMdAttr.u32BgUpSrcWgt = 128;
     chn_s.unAttr.stMdAttr.u32MdBufNum = 8;
     chn_s.unAttr.stMdAttr.u32ObjNumMax = 128;
-    chn_s.unAttr.stMdAttr.u32SadTh = 100;
+    chn_s.unAttr.stMdAttr.u32SadTh = cmd.sad_thresh;
 
     VDA_CHN chn = 0;
     ret = HI_MPI_VDA_CreateChn(chn, &chn_s);
@@ -335,8 +429,6 @@ int main(int argc, char **argv)
     pthread_create(&g_VdaPid[0], 0, RK_SAMPLE_COMM_VDA_MdGetResult, (HI_VOID*)&g_stMdParam);
 
     HI_S32 cnt = 0;
-    VB_BLK vb_blk = VB_INVALID_HANDLE;
-    HI_U32 phyAddr;
     HI_U8  *buf = NULL;
 
     buf = (HI_U8 *)malloc(size);
